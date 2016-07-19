@@ -1,0 +1,151 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <script type="text/javascript" src="http://code.jquery.com/jquery-latest.min.js"></script>
+  <script type="text/javascript" src="dpd.js"></script>
+  <script type="text/javascript">
+  
+	var myloc = [7.0001, 47.989];
+	function loadObjectsNear(location, maxDistance) {
+		console.log("loadObjectsNear: ", location);
+		dpd.objects.get(
+			{
+				location : {"$near":{"$maxDistance":maxDistance,"$geometry":{type:"Point",coordinates:location}}}
+			},
+			function(objects, error) { //Use dpd.js to access the API
+				console.log(objects);
+				alert(JSON.stringify(objects));
+			});
+	}
+	function loadAgentsNear(location, maxDistance) {
+		console.log("loadAgentsNear: ", location);
+		dpd.agents.get(
+			{
+				location : {"$near":{"$maxDistance":maxDistance,"$geometry":{type:"Point",coordinates:location}}}
+			},
+			function(agents, error) { //Use dpd.js to access the API
+				console.log(agents);
+				alert(JSON.stringify(agents));
+			});
+	}
+	
+	function setLoggedIn(loggedin) {
+		console.log("setLoggedIn", loggedin);
+		if (loggedin) {
+			$('#username').prop("disabled", true);
+			$('#password').prop("disabled", true);
+			$('#btnLogin').prop('value', 'logout');
+		} else {
+			$('#username').prop("disabled", false);
+			$('#password').prop("disabled", false);
+			$('#btnLogin').prop('value', 'login');
+		}
+		$('#btnLogin').prop("disabled", false);
+	}
+	
+	$(document).ready(function() {
+		// check if we are logged in
+		dpd.agents.me(function(user, error) {
+		  if (user) {
+          console.log("USER BEREITS EINGELOGGT: ", user);
+          setLoggedIn(true);
+          $('#inpLongitude').prop('value', user.longitude);
+          $('#inpLatitude').prop('value', user.latitude);
+        }
+		  else {
+          console.log("USER NOCH NICHT EINGELOGGT.");
+          setLoggedIn(false);
+        }
+		});
+		
+		// login form handler
+		$('#btnLogin').click(function() {
+		  $('#btnLogin').prop("disabled", true);
+		  console.log("logging in/out: ", $('#btnLogin').val());
+		  if ($('#btnLogin').val() == "logout") {
+			dpd.agents.logout(function(result, error) {
+				setLoggedIn(false);
+			});
+		  } else {
+			  var username = $('#username').val();
+			  var password = $('#password').val();
+			  dpd.agents.login({username: username, password: password}, function(result, error) {
+				if (error) {
+				  alert(error.message);
+				  setLoggedIn(false);
+				} else {
+               console.log(result);
+               dpd.agents.me(function(user) {
+                 if (user) {
+                   setLoggedIn(true);
+                   $('#inpLongitude').prop('value', user.longitude);
+                   $('#inpLatitude').prop('value', user.latitude);
+                 }
+               });
+				  setLoggedIn(true);
+				}
+			  });
+		  }
+		  event.preventDefault();
+		});
+		
+		$('#btnQueryObjects').click(function() {
+			// load objects near users location
+         console.log("querying objects");
+			loadObjectsNear(myloc, 10000);
+		});
+		$('#btnQueryAgents').click(function() {
+			// load objects near users location
+         console.log("querying agents");
+			loadAgentsNear(myloc, 10000);
+		});
+	
+		// location form handler
+		$('#locationform').submit(function() {
+		  var longitude = $('#inpLongitude').val();
+		  var latitude = $('#inpLatitude').val();
+        dpd.agents.me(function(user) {
+          if (user) {
+            dpd.agents.put(
+               user.id,
+               {location: [longitude, latitude]},
+               function(result, error) { console.log(error); }
+            )
+          }
+        });
+		  event.preventDefault();
+		});
+		
+	});
+   
+   dpd.on('agentChanged', function(message) {
+     console.log("agent changed", message);
+   });
+   
+   dpd.agents.on('created', function(message) {
+     console.log("agent created", message);
+   });
+   
+   dpd.objects.on('changed', function(message) {
+     console.log("object changed", message);
+   });
+   
+   dpd.objects.on('created', function(message) {
+     console.log("object created", message);
+   });
+  </script>
+</head>
+<body>
+  <h1>Welcome to WorldServer!</h1>
+  <p>All the Action in the console right now</p>
+  <p><input type="text" placeholder="username" id="username"/> <input type="password" placeholder="password" id="password"/> <input type="button" id="btnLogin" value="login"/></p>
+  <p><input type="button" value="queryObjects" id="btnQueryObjects"/></p>
+  <p><input type="button" value="queryAgents" id="btnQueryAgents"/></p>
+  <p><form id="locationform"><input type="text" id="inpLongitude" placeholder="longitude"/> <input type="text" id="inpLatitude" placeholder="latitude"/> <input type="submit" value="set"/></form> <span id="spnCurLoc">(current: unknown)</span></p>
+  <p><b><a href="Cesium/Apps/WorldServerClient/">WorldServerClient (CesiumJS)</a></b></p>
+  <p><b><a href="Cesium/Apps/WorldServerClient/ar.html">WorldServerClient (AR)</a></b></p>
+  <p><b><a href="MobileAgent.html">Mobile Agent (for Smartphones)</a></b></p>
+  <p><b><a href="geowiki_agent.html">GeoWiki Agent</a></b></p>
+  <p><b><a href="/dashboard">Dashboard</a></b></p>
+</body>
+</html>

@@ -1,0 +1,90 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="utf-8">
+<meta content="GeoWiki Agent" name="title">
+<!-- Tell IE to use the latest, best version. -->
+<meta http-equiv="X-UA-Compatible" content="IE=edge">
+<!-- Make the application on mobile take up the full browser screen and disable user scaling. -->
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, minimum-scale=1, user-scalable=no">
+<title>GeoWiki Agent</title>
+  
+<script src="../Cesium/Cesium.js"></script>
+  
+<style>
+
+@import url(../Cesium/Widgets/widgets.css);
+
+#container {
+   position:absolute;
+   width: 100%;
+   height: 100%;
+   margin: 0px;
+   padding: 0px;
+   overflow: hidden;
+}
+html, body {
+   width: 100%; height: 100%; margin: 0; padding: 0; overflow: hidden;
+}
+
+#cesiumContainer {
+   position: absolute; width: 100%; height: 100%; margin: 0; padding: 0; overflow: hidden;
+}
+</style>
+</head>
+  
+<body>
+
+<div id="container">
+
+   <div id="cesiumContainer"></div>
+
+</div>
+
+<script type="text/javascript" src="../ThirdParty/jquery-2.2.0.min.js"></script>
+<script src="/dpd.js"></script>
+<script type="text/javascript" src="GeoWiki.Class.js"></script>
+<script type="text/javascript" src="WorldServerClient.js"></script>
+<script>
+
+
+   // WorldServer Client
+   var me = false;
+   var objects = [];
+   var agents = [];
+   // WorldServer login
+   var username = "geowiki";
+   var password = "geowiki";
+   var radius = 10000;
+
+   // CESIUM
+   var viewer = null;
+   
+   // PLUGIN: GEOWIKI
+   var geoWiki = new GeoWiki();
+   
+   // WORLDSERVER ACCESS
+   var worldServerClient = new WorldServerClient(viewer, dpd);
+   worldServerClient.login(username, password);
+   worldServerClient.enableGeoLocation(function(location) {
+   
+     // update geoWiki channel
+     geoWiki.update(location.coords.longitude, location.coords.latitude, radius);
+     
+   });
+   geoWiki.onPageAdded = function(entry) {
+      // push page info to WorldServer
+      worldServerClient.pushObject(entry.id, entry.page.coordinates[0].lon, entry.page.coordinates[0].lat, 0, entry.page.title, entry.description);
+   }
+   
+   worldServerClient.onObjectCreated = function(object) {
+      // change the object entity if desired
+   }
+   worldServerClient.onObjectCreated = function(agent) {
+      // change the agent entity  if desired
+   }
+   
+   
+</script>
+</body>
+</html>

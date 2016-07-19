@@ -1,0 +1,112 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <script type="text/javascript" src="http://code.jquery.com/jquery-latest.min.js"></script>
+  <script type="text/javascript" src="dpd.js"></script>
+  <script type="text/javascript">
+  
+	var running = false;
+   
+	function setLoggedIn(loggedin) {
+		console.log("setLoggedIn", loggedin);
+		if (loggedin) {
+			$('#username').prop("disabled", true);
+			$('#password').prop("disabled", true);
+			$('#btnLogin').prop('value', 'logout');
+		} else {
+			$('#username').prop("disabled", false);
+			$('#password').prop("disabled", false);
+			$('#btnLogin').prop('value', 'login');
+		}
+		$('#btnLogin').prop("disabled", false);
+	}
+	
+	$(document).ready(function() {
+		// check if we are logged in
+		dpd.agents.me(function(user, error) {
+		  if (user) {
+          console.log("USER BEREITS EINGELOGGT: ", user);
+          setLoggedIn(true);
+          $('#inpLongitude').prop('value', user.longitude);
+          $('#inpLatitude').prop('value', user.latitude);
+        }
+		  else {
+          console.log("USER NOCH NICHT EINGELOGGT.");
+          setLoggedIn(false);
+        }
+		});
+		
+		// login form handler
+		$('#btnLogin').click(function() {
+		  $('#btnLogin').prop("disabled", true);
+		  console.log("logging in/out: ", $('#btnLogin').val());
+		  if ($('#btnLogin').val() == "logout") {
+			dpd.agents.logout(function(result, error) {
+				setLoggedIn(false);
+			});
+		  } else {
+			  var username = $('#username').val();
+			  var password = $('#password').val();
+			  dpd.agents.login({username: username, password: password}, function(result, error) {
+				if (error) {
+				  alert(error.message);
+				  setLoggedIn(false);
+				} else {
+               console.log(result);
+               dpd.agents.me(function(user) {
+                 if (user) {
+                   setLoggedIn(true);
+                   $('#inpLongitude').prop('value', user.longitude);
+                   $('#inpLatitude').prop('value', user.latitude);
+                 }
+               });
+				  setLoggedIn(true);
+				}
+			  });
+		  }
+		  event.preventDefault();
+		});
+		
+		
+	});
+   
+   function GetLocation(location) {
+      console.log(location.coords);
+      dpd.agents.me(function(user) {
+       if (user) {
+         dpd.agents.put(
+            user.id,
+            {location: {
+               "type": "Point",
+               "coordinates": [location.coords.longitude, location.coords.latitude]
+            }},
+            function(result, error) { console.log(error); }
+         )
+       }
+      });
+   }
+   
+   window.setInterval(function () {
+      // Main Loop
+      if (!running)
+         return;
+      console.log("tick");
+      navigator.geolocation.getCurrentPosition(GetLocation);
+   }, 5000);
+   
+   function toggleStartStop() {
+      running = !running;
+      var el = document.getElementById("btnStartStop");
+      el.value = (running ? "STOP" : "START");
+   }
+   
+  </script>
+</head>
+<body>
+  <h1>Mobile Agent</h1>
+  <p>Control yout WorldServer Agent with your Smartphone</p>
+  <p><input type="text" placeholder="username" id="username" value="mobile"/> <input type="password" placeholder="password" id="password" value="mobile"/> <input type="button" id="btnLogin" value="login"/></p>
+  <p><span id="spnCurLoc">(current location: unknown)</span></p>
+  <p><input type="button" id="btnStartStop" value="start" onclick="toggleStartStop();"/></p>
+</body>
+</html>

@@ -1,0 +1,206 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="utf-8">
+<meta content="Augmented Reality Viewer" name="title">
+  <meta charset="utf-8">
+  <!-- Tell IE to use the latest, best version. -->
+  <meta http-equiv="X-UA-Compatible" content="IE=edge">
+  <!-- Make the application on mobile take up the full browser screen and disable user scaling. -->
+  <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, minimum-scale=1, user-scalable=no">
+<title>Augmented Reality Viewer</title>
+  
+<script src="../../Build/Cesium/Cesium.js"></script>
+  
+<style>
+
+@import url(../../Build/Cesium/Widgets/widgets.css);
+
+#container {
+   position:absolute;
+   width: 100%;
+   height: 100%;
+   margin: 0px;
+   padding: 0px;
+   overflow: hidden;
+}
+#videoContainer {
+    position: absolute;
+    margin: 0px auto;
+    width: 100%;
+    height: 100%;
+}
+#videoElement {
+    width: 100%;
+    height: 100%;
+    background-color: #666;
+}
+
+html, body {
+   width: 100%; height: 100%; margin: 0; padding: 0; overflow: hidden;
+}
+
+#cesiumContainer {
+   position: absolute; width: 100%; height: 100%; margin: 0; padding: 0; overflow: hidden;
+}
+</style>
+</head>
+  
+<body>
+
+<div id="container">
+
+   <div id="videoContainer">
+       <video autoplay="true" id="videoElement">
+        
+       </video>
+   </div>
+
+   <div id="cesiumContainer"></div>
+
+</div>
+
+<script type="text/javascript" src="jquery-2.2.0.min.js"></script>
+<!--<script src="../../dpd.js"></script>-->
+<script src="/dpd.js"></script>
+<script type="text/javascript" src="/WorldServerClient.js"></script>
+<script>
+
+
+   // WorldServer Client
+   var me = false;
+   var objects = [];
+   var agents = [];
+   // WorldServer login
+   var username = "admin";
+   var password = "lro!l7E1g8";
+   var radius = 1000;
+   
+   
+   // CAMERA
+   var video = document.querySelector("#videoElement");
+   navigator.getUserMedia = navigator.getUserMedia || navigator.webkitGetUserMedia || navigator.mozGetUserMedia || navigator.msGetUserMedia || navigator.oGetUserMedia;
+
+    
+   // rear cam: http://stackoverflow.com/questions/18483160/which-camera-will-open-getusermedia-api-in-mobile-device-front-or-rear
+   function gotSources(sourceInfos) {
+     var camIndex = 0;
+     var chosenIndex = 0;
+     for (var i = 0; i !== sourceInfos.length; ++i) {
+       var sourceInfo = sourceInfos[i];
+       var option = document.createElement('option');
+       if (sourceInfo.kind === 'video') {
+         if (camIndex == chosenIndex && navigator.getUserMedia) {
+            // start this stream!
+            var constraints = {
+             video: {
+               optional: [{sourceId: sourceInfo.id}]
+             }
+           };
+           navigator.getUserMedia(constraints, handleVideo, videoError);
+         }
+         camIndex++;
+       }
+     }
+   }
+
+   if (typeof MediaStreamTrack === 'undefined'){
+     alert('This browser does not support MediaStreamTrack.\n\nTry Chrome Canary.');
+   } else {
+     MediaStreamTrack.getSources(gotSources);
+   }
+    
+   function handleVideo(stream) {
+       video.src = window.URL.createObjectURL(stream);
+   }
+    
+   function videoError(e) {
+       // do something
+   }
+
+   // CESIUM
+   var viewer = new Cesium.Viewer('cesiumContainer', {
+    vrButton : true,
+    timeline : false,
+    navigationHelpButton : false,
+    navigationInstructionsInitiallyVisible : false,
+    homeButton : false,
+    geocoder : false,
+    animation : false,
+    scene3DOnly : true,
+    shadows : true,
+    terrainShadows : true,
+    fullscreenElement : true,
+    imageryProvider : new Cesium.MapboxImageryProvider({
+       mapId: 'mapbox.streets',
+       accessToken: 'pk.eyJ1IjoiYW5hbHl0aWNhbGdyYXBoaWNzIiwiYSI6IjA2YzBjOTM3YzFlYzljYmQ5NDAxZWI1Y2ZjNzZlM2E1In0.vDZL2SPFEpi_f7ziAIP_yw'
+    }),
+    contextOptions : { webgl: { alpha: true } }
+   });
+   
+   viewer.terrainProvider = new Cesium.CesiumTerrainProvider({
+       url : '//assets.agi.com/stk-terrain/world',
+       requestWaterMask : true,
+       requestVertexNormals : true
+   });
+   var shadowMap = viewer.shadowMap;
+   //shadowMap.maxmimumDistance = 10000.0;
+   // BACKGROUND TRANSPARENCY
+   viewer.scene.fxaa = false;
+   viewer.scene.skyBox.destroy();
+   viewer.scene.skyBox = undefined;
+   viewer.scene.sun.destroy();
+   viewer.scene.sun = undefined;
+   viewer.scene.moon.destroy();
+   viewer.scene.moon = undefined;
+   viewer.scene.skyAtmosphere.destroy();
+   viewer.scene.skyAtmosphere = undefined;
+   viewer.scene.backgroundColor = new Cesium.Color(0, 0, 0, 0);
+   
+   // DEMO AR OBJECT
+   var redBox = false;
+
+   // WORLDSERVER ACCESS
+   var worldServerClient = new WorldServerClient(viewer, dpd);
+   worldServerClient.login("admin", "lro!l7E1g8");
+   worldServerClient.enableGeoLocation(function(location) {
+     
+     // create a demo AR object on first localisation
+     if (redBox === false) {
+         redBox = viewer.entities.add({
+           name : 'Demo AR object',
+           position: Cesium.Cartesian3.fromDegrees(location.coords.longitude, location.coords.latitude + 0.001),
+           box : {
+               dimensions : new Cesium.Cartesian3(2.0, 2.0, 2.0),
+               material : Cesium.Color.RED,
+               outline : true,
+               outlineColor : Cesium.Color.BLACK
+           },
+           label : {
+              text : "DemoObject",
+              fillColor : Cesium.Color.BLACK,
+              outlineColor : Cesium.Color.WHITE,
+              outlineWidth : 1,
+              style : Cesium.LabelStyle.FILL_AND_OUTLINE,
+              pixelOffset : new Cesium.Cartesian2(0.0, -20),
+              pixelOffsetScaleByDistance : new Cesium.NearFarScalar(1.5e2, 3.0, 1.5e7, 0.5),
+              translucencyByDistance : new Cesium.NearFarScalar(1.5, 1.0, 1.5e3, 0.0)
+           }
+         });
+      }
+      
+   });
+   
+   worldServerClient.setShadows(true, true);
+   
+   worldServerClient.onObjectCreated = function(object) {
+      // change the object entity if desired
+   }
+   worldServerClient.onObjectCreated = function(agent) {
+      // change the agent entity  if desired
+   }
+   
+   
+</script>
+</body>
+</html>
