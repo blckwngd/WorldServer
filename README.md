@@ -11,7 +11,7 @@ The example for this project is the virtual dimension of the Darknet, taken from
 Everybody can run their own servers and agents to define and interact with virtual objects. Thus, WorldServer is the AR equivalent to OpenSimulator.
 
 WorldServer is independent from a specific viewer or client. Viewers can be implemented for Webbrowsers, Microsoft Hololens or smartphones.
-However, several demo viewers are provided as starting point.
+However, several demo viewers are provided as a starting point.
 
 Each viewer can be connected to multiple Servers, so that mixed content from several sources can be accessed simultaneously.
 
