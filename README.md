@@ -21,3 +21,19 @@ Each viewer can be connected to multiple Servers, so that mixed content from sev
 ## Architecture
 
 ## How to install
+
+### Deployd
+
+The server of the application is based on deployd, which uses NodeJS and MongoDB.
+You need to adjust your Deployd RunScript in order to use dpd via https, which is necessary for client side hardware access from JavaScript.
+To do so, generate your SSL Keyfile (key.pem) and change the following lines to you RunScript (by default located in the installation directory of deployd, under node_modules\deployd\bin\dpd):
+
+  var options = {
+	 port: port,
+	 env: 'development',
+	 db: {host: host, port: mongoPort, name: dbname},
+	 key: fs.readFileSync('C:\\key.pem'),
+	 cert: fs.readFileSync('C:\\cert.pem')
+  };
+  
+an example RunScript is located in the directory 'Setup'.
