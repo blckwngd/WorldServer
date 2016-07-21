@@ -22,18 +22,77 @@ Each viewer can be connected to multiple Servers, so that mixed content from sev
 
 ## How to install
 
-### Deployd
+### Prerequisites
+
+You need to install the following pieces of Software:
+- NodeJS (https://nodejs.org)
+- Deployd (https://www.deployd.com) - we run deployd as node module, but still need the dpd tool.
+- MongoDB (https://mongodb.org) if you want to run a local database
+
+Additionally, you need the following node modules:
+- deployd
+- fs
+- https
+
+
+### Setup encryption
 
 The server of the application is based on deployd, which uses NodeJS and MongoDB.
 You need to adjust your Deployd RunScript in order to use dpd via https, which is necessary for client side hardware access from JavaScript.
-To do so, generate your SSL Keyfile (key.pem) and change the following lines to you RunScript (by default located in the installation directory of deployd, under node_modules\deployd\bin\dpd):
+To do so, generate your SSL Keyfile (key.pem) and adjust the following lines to you runscript (by default located in 'Server' directory):
 
-  var options = {
-	 port: port,
-	 env: 'development',
-	 db: {host: host, port: mongoPort, name: dbname},
-	 key: fs.readFileSync('C:\\key.pem'),
-	 cert: fs.readFileSync('C:\\cert.pem')
-  };
+	var options = {
+		...
+		key: fs.readFileSync('your_key.pem'),
+		cert: fs.readFileSync('your_cert.pem')
+	};
   
-an example RunScript is located in the directory 'Setup'.
+As a quick start, an unsigned certificate and key file for 'localhost' are provided.
+
+
+### MongoDB
+
+1. Create a data directory for your mongo instance, i.e. /worldserver_db
+
+2. Start the mongo daemon:
+
+	mongod --dbpath /worldserver_db
+	
+3. Set up your database using the following commands:
+
+	mongorestore -h localhost:27017 -d worldserver ".\WorldServer\Database"
+
+4. Adjust your runscript (i.e. Server\run_local.js)
+
+	var server = deployd({
+	  ...
+	  db: {
+		host: 'localhost',
+		port: YOUR_PORT,
+		name: 'worldserver'
+	  },
+	  ...
+	});
+
+5. generate your App Key
+
+From the main directory, run
+
+	dpd keygen
+
+To generate your key. Please remember not to commit the file .dpd/keys.json to the repository!
+You can view the generated key by
+
+	dpd showkey
+
+You will need it later.
+
+
+## How to run
+
+When your environment is properly set up, navigate to the Server directory execute the proper runscript:
+
+	node run_local.js
+
+When the server is running, you can access it from your webbrowser, i.e. via https://localhost:5000/
+You can access the dashboard via https://localhost:5000/dashboard using the previously generated key.
