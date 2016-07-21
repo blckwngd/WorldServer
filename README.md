@@ -25,7 +25,9 @@ Each viewer can be connected to multiple Servers, so that mixed content from sev
 ### Prerequisites
 
 You need to install the following pieces of Software:
+
 - NodeJS (https://nodejs.org)
+- npm (i.e. https://github.com/isaacs/npm for windows)
 - Deployd (https://www.deployd.com) - we run deployd as node module, but still need the dpd tool.
 - MongoDB (https://mongodb.org) if you want to run a local database
 
@@ -57,7 +59,7 @@ As a quick start, an unsigned certificate and key file for 'localhost' are provi
 2. Start the mongo daemon:
 
 	mongod --dbpath /worldserver_db
-	
+
 3. Set up your database using the following commands:
 
 	mongorestore -h localhost:27017 -d worldserver ".\WorldServer\Database"
