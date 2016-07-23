@@ -1,0 +1,77 @@
+{
+	"type": "Collection",
+	"properties": {
+		"owner": {
+			"name": "owner",
+			"type": "string",
+			"typeLabel": "string",
+			"required": false,
+			"id": "owner",
+			"order": 0
+		},
+		"location": {
+			"name": "location",
+			"type": "object",
+			"typeLabel": "object",
+			"required": false,
+			"id": "location",
+			"order": 1
+		},
+		"orientation": {
+			"name": "orientation",
+			"type": "object",
+			"typeLabel": "object",
+			"required": false,
+			"id": "orientation",
+			"order": 2
+		},
+		"scale": {
+			"name": "scale",
+			"type": "array",
+			"typeLabel": "array",
+			"required": false,
+			"id": "scale",
+			"order": 3
+		},
+		"isrelative": {
+			"name": "isrelative",
+			"type": "boolean",
+			"typeLabel": "boolean",
+			"required": false,
+			"id": "isrelative",
+			"order": 4
+		},
+		"name": {
+			"name": "name",
+			"type": "string",
+			"typeLabel": "string",
+			"required": false,
+			"id": "name",
+			"order": 5
+		},
+		"description": {
+			"name": "description",
+			"type": "string",
+			"typeLabel": "string",
+			"required": false,
+			"id": "description",
+			"order": 6
+		},
+		"layerid": {
+			"name": "layerid",
+			"type": "number",
+			"typeLabel": "number",
+			"required": false,
+			"id": "layerid",
+			"order": 7
+		},
+		"url": {
+			"name": "url",
+			"type": "string",
+			"typeLabel": "string",
+			"required": false,
+			"id": "url",
+			"order": 8
+		}
+	}
+}

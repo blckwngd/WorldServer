@@ -1,0 +1,53 @@
+{
+	"type": "UserCollection",
+	"properties": {
+		"name": {
+			"name": "name",
+			"type": "string",
+			"typeLabel": "string",
+			"required": false,
+			"id": "name",
+			"order": 0
+		},
+		"owner": {
+			"name": "owner",
+			"type": "number",
+			"typeLabel": "number",
+			"required": false,
+			"id": "owner",
+			"order": 1
+		},
+		"location": {
+			"name": "location",
+			"type": "object",
+			"typeLabel": "object",
+			"required": false,
+			"id": "location",
+			"order": 2
+		},
+		"orientation": {
+			"name": "orientation",
+			"type": "object",
+			"typeLabel": "object",
+			"required": false,
+			"id": "orientation",
+			"order": 3
+		},
+		"inbox": {
+			"name": "inbox",
+			"type": "array",
+			"typeLabel": "array",
+			"required": false,
+			"id": "inbox",
+			"order": 4
+		},
+		"outbox": {
+			"name": "outbox",
+			"type": "array",
+			"typeLabel": "array",
+			"required": false,
+			"id": "outbox",
+			"order": 5
+		}
+	}
+}

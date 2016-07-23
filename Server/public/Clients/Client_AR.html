@@ -10,11 +10,11 @@
   <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, minimum-scale=1, user-scalable=no">
 <title>Augmented Reality Viewer</title>
   
-<script src="../../Build/Cesium/Cesium.js"></script>
+<script src="../Cesium/Cesium.js"></script>
   
 <style>
 
-@import url(../../Build/Cesium/Widgets/widgets.css);
+@import url(../Cesium/Widgets/widgets.css);
 
 #container {
    position:absolute;
@@ -60,10 +60,10 @@ html, body {
 
 </div>
 
-<script type="text/javascript" src="jquery-2.2.0.min.js"></script>
+<script type="text/javascript" src="../ThirdParty/jquery-2.2.0.min.js"></script>
 <!--<script src="../../dpd.js"></script>-->
 <script src="/dpd.js"></script>
-<script type="text/javascript" src="/WorldServerClient.js"></script>
+<script type="text/javascript" src="WorldServerClient.js"></script>
 <script>
 
 
@@ -72,8 +72,8 @@ html, body {
    var objects = [];
    var agents = [];
    // WorldServer login
-   var username = "admin";
-   var password = "admin";
+   var username = "agent1";
+   var password = "agent1";
    var radius = 1000;
    
    
@@ -162,7 +162,7 @@ html, body {
 
    // WORLDSERVER ACCESS
    var worldServerClient = new WorldServerClient(viewer, dpd);
-   worldServerClient.login("admin", "lro!l7E1g8");
+   worldServerClient.login(username, password);
    worldServerClient.enableGeoLocation(function(location) {
      
      // create a demo AR object on first localisation

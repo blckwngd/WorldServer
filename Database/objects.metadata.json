@@ -1,1 +1,1 @@
-{"options":{},"indexes":[{"v":1,"key":{"_id":1},"name":"_id_","ns":"worldserver.objects"}]}
+{"options":{},"indexes":[{"v":1,"key":{"_id":1},"name":"_id_","ns":"worldserver.objects"},{"v":1,"key":{"location":"2dsphere"},"name":"geoIndex","ns":"worldserver.objects","background":true,"sparse":true,"2dsphereIndexVersion":2}]}
