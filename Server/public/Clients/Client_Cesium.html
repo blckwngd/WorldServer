@@ -1,151 +1,122 @@
 <!DOCTYPE html>
-<html>
+<html lang="en">
 <head>
-  <script type="text/javascript" src="http://code.jquery.com/jquery-latest.min.js"></script>
-  <script type="text/javascript" src="dpd.js"></script>
-  <script type="text/javascript">
-  
-	var myloc = [7.0001, 47.989];
-	function loadObjectsNear(location, maxDistance) {
-		console.log("loadObjectsNear: ", location);
-		dpd.objects.get(
-			{
-				location : {"$near":{"$maxDistance":maxDistance,"$geometry":{type:"Point",coordinates:location}}}
-			},
-			function(objects, error) { //Use dpd.js to access the API
-				console.log(objects);
-				alert(JSON.stringify(objects));
-			});
-	}
-	function loadAgentsNear(location, maxDistance) {
-		console.log("loadAgentsNear: ", location);
-		dpd.agents.get(
-			{
-				location : {"$near":{"$maxDistance":maxDistance,"$geometry":{type:"Point",coordinates:location}}}
-			},
-			function(agents, error) { //Use dpd.js to access the API
-				console.log(agents);
-				alert(JSON.stringify(agents));
-			});
-	}
-	
-	function setLoggedIn(loggedin) {
-		console.log("setLoggedIn", loggedin);
-		if (loggedin) {
-			$('#username').prop("disabled", true);
-			$('#password').prop("disabled", true);
-			$('#btnLogin').prop('value', 'logout');
-		} else {
-			$('#username').prop("disabled", false);
-			$('#password').prop("disabled", false);
-			$('#btnLogin').prop('value', 'login');
-		}
-		$('#btnLogin').prop("disabled", false);
-	}
-	
-	$(document).ready(function() {
-		// check if we are logged in
-		dpd.agents.me(function(user, error) {
-		  if (user) {
-          console.log("USER BEREITS EINGELOGGT: ", user);
-          setLoggedIn(true);
-          $('#inpLongitude').prop('value', user.longitude);
-          $('#inpLatitude').prop('value', user.latitude);
-        }
-		  else {
-          console.log("USER NOCH NICHT EINGELOGGT.");
-          setLoggedIn(false);
-        }
-		});
-		
-		// login form handler
-		$('#btnLogin').click(function() {
-		  $('#btnLogin').prop("disabled", true);
-		  console.log("logging in/out: ", $('#btnLogin').val());
-		  if ($('#btnLogin').val() == "logout") {
-			dpd.agents.logout(function(result, error) {
-				setLoggedIn(false);
-			});
-		  } else {
-			  var username = $('#username').val();
-			  var password = $('#password').val();
-			  dpd.agents.login({username: username, password: password}, function(result, error) {
-				if (error) {
-				  alert(error.message);
-				  setLoggedIn(false);
-				} else {
-               console.log(result);
-               dpd.agents.me(function(user) {
-                 if (user) {
-                   setLoggedIn(true);
-                   $('#inpLongitude').prop('value', user.longitude);
-                   $('#inpLatitude').prop('value', user.latitude);
-                 }
-               });
-				  setLoggedIn(true);
-				}
-			  });
-		  }
-		  event.preventDefault();
-		});
-		
-		$('#btnQueryObjects').click(function() {
-			// load objects near users location
-         console.log("querying objects");
-			loadObjectsNear(myloc, 10000);
-		});
-		$('#btnQueryAgents').click(function() {
-			// load objects near users location
-         console.log("querying agents");
-			loadAgentsNear(myloc, 10000);
-		});
-	
-		// location form handler
-		$('#locationform').submit(function() {
-		  var longitude = $('#inpLongitude').val();
-		  var latitude = $('#inpLatitude').val();
-        dpd.agents.me(function(user) {
-          if (user) {
-            dpd.agents.put(
-               user.id,
-               {location: [longitude, latitude]},
-               function(result, error) { console.log(error); }
-            )
-          }
-        });
-		  event.preventDefault();
-		});
-		
-	});
-   
-   dpd.on('agentChanged', function(message) {
-     console.log("agent changed", message);
-   });
-   
-   dpd.agents.on('created', function(message) {
-     console.log("agent created", message);
-   });
-   
-   dpd.objects.on('changed', function(message) {
-     console.log("object changed", message);
-   });
-   
-   dpd.objects.on('created', function(message) {
-     console.log("object created", message);
-   });
-  </script>
+  <!-- Use correct character set. -->
+  <meta charset="utf-8">
+  <!-- Tell IE to use the latest, best version. -->
+  <meta http-equiv="X-UA-Compatible" content="IE=edge">
+  <!-- Make the application on mobile take up the full browser screen and disable user scaling. -->
+  <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, minimum-scale=1, user-scalable=no">
+  <title>WorldServerViewer</title>
+  <script src="../Cesium/Cesium.js"></script>
+  <script src="/dpd.js"></script>
+  <script src="../ThirdParty/jquery-2.2.0.min.js"></script>
+  <script type="text/javascript" src="WorldServerClient.js"></script>
+  <style>
+      @import url(../Cesium/Widgets/widgets.css);
+      #cesiumContainer {
+        position: absolute;
+        top: 0;
+        left: 0;
+        height: 100%;
+        width: 100%;
+        margin: 0;
+        overflow: hidden;
+        padding: 0;
+        font-family: sans-serif;
+      }
+
+      html {
+        height: 100%;
+      }
+
+      body {
+        padding: 0;
+        margin: 0;
+        overflow: hidden;
+        height: 100%;
+      }
+  </style>
 </head>
 <body>
-  <h1>Welcome to WorldServer!</h1>
-  <p>All the Action in the console right now</p>
-  <p><input type="text" placeholder="username" id="username"/> <input type="password" placeholder="password" id="password"/> <input type="button" id="btnLogin" value="login"/></p>
-  <p><input type="button" value="queryObjects" id="btnQueryObjects"/></p>
-  <p><input type="button" value="queryAgents" id="btnQueryAgents"/></p>
-  <p><form id="locationform"><input type="text" id="inpLongitude" placeholder="longitude"/> <input type="text" id="inpLatitude" placeholder="latitude"/> <input type="submit" value="set"/></form> <span id="spnCurLoc">(current: unknown)</span></p>
-  <p><b><a href="Cesium/Apps/WorldServerClient/">WorldServerClient (CesiumJS)</a></b></p>
-  <p><b><a href="Cesium/Apps/WorldServerClient/ar.html">WorldServerClient (AR)</a></b></p>
-  <p><b><a href="MobileAgent.html">Mobile Agent (for Smartphones)</a></b></p>
-  <p><b><a href="geowiki_agent.html">GeoWiki Agent</a></b></p>
-  <p><b><a href="/dashboard">Dashboard</a></b></p>
+  <div id="cesiumContainer"></div>
+  <div id="overlay" style="z-index:5000">
+   <select id="selObject">
+      <option value="d995eaadace8f85c">d995eaadace8f85c</option>
+   </select> 
+   <input type="button" id="btnGotoObject" value="go to object"/><br/>
+   <input type="button" id="btnPing" value="send out ping"/><br/>
+   <select id="selAgent">
+      <option value="broadcast200" selected>broadcast (r=200m)</option>
+      <option value="broadcast2000">broadcast (r=2km)</option>
+      <option value="79d5a379dd4248a6">user</option>
+      <option value="c831b210939508ac">admin</option>
+   </select> 
+   <input type="text" id="txtMessage" placeholder="message"/> <input type="button" id="btnMessage" value="send message"/><br/>
+  </div>
+  <script type="text/javascript">
+  
+   // WorldServer Client
+   var me = false;
+   var objects = [];
+   var agents = [];
+   // WorldServer login
+   var username = "agent1";
+   var password = "agent1";
+   var radius = 1000;
+   
+   var viewer = new Cesium.Viewer('cesiumContainer', {
+       infoBox : true,
+       selectionIndicator : true
+   });
+   var pinBuilder = new Cesium.PinBuilder();
+   
+   function flyToEntity(targetId) {
+      var target = viewer.entities.getById(targetId);
+      if (typeof target !== "undefined") {
+         viewer.flyTo(target).then(function(result){
+           if (result) {
+             viewer.selectedEntity = target;
+           }
+         });
+      } else {
+         alert("this entity does not exist");
+      }
+   }
+   
+   function sendMessage (message) {
+      console.log("sending message: ", message);
+      if (!me)
+         return;
+      if (!Array.isArray(me.outbox))
+         me.outbox = [message];
+      else
+         me.outbox.push(message);
+      dpd.agents.put(me);
+      me.outbox = [];
+      
+   }
+
+   $("#btnGotoObject").click(function() {
+      var targetId = $("#selObject").val();
+      flyToEntity(targetId);
+   });
+   
+   $("#btnPing").click(function() {
+      var message = {
+         recipients: "*",     // Dear all
+         radius: 200,          // in my closer area,
+         body: "PING"         // PING
+      };
+      sendMessage(message);
+   });
+   
+
+   // WORLDSERVER ACCESS
+   var worldServerClient = new WorldServerClient(viewer, dpd);
+   worldServerClient.login(username, password);
+   worldServerClient.setLocationAuthority(worldServerClient.LocationAuthority.Camera);
+   
+   </script>
 </body>
 </html>

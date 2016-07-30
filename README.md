@@ -15,6 +15,7 @@ However, several demo viewers are provided as a starting point.
 
 Each viewer can be connected to multiple Servers, so that mixed content from several sources can be accessed simultaneously.
 
+![Screenshot from Cesium client](/Resources/screenshot_cesium.png "Screenshot from the cesium client, showing information about a building which has been automatically retrieved from wikipedia.")
 
 ## Why WorldServer
 

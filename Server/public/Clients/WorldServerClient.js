@@ -46,9 +46,9 @@ function WorldServerClient(viewer, dpd) {
  * ENUM for valid locationAuthorities
  */
 WorldServerClient.prototype.LocationAuthority = {
-   Camera : 1,
-   Geo: 2,
-   Agent: 3
+   Camera : 1,	// the users controls the camera, the agent moves accordingly
+   Geo: 2,		// camera and agent are adjusted to the users gps coordinates
+   Agent: 3		// the agent is controlled directly by the script. camera will be adjusted accordingly
 };
 
 /** login
@@ -150,14 +150,23 @@ WorldServerClient.prototype.updateAgentLocationFromCamera = function(forceSync) 
    if (!this.viewer)
       return;
    var location = this.viewer.camera.positionCartographic;
+   console.log(location);
    if (this.me) {
       this.me.location.coordinates[0] = Cesium.Math.toDegrees(location.longitude); // TODO: toDegrees() necessary?
       this.me.location.coordinates[1] = Cesium.Math.toDegrees(location.latitude);
       this.me.location.height = location.height;
       
       if (forceSync || !this.uploadBlocked ) {
-         dpd.agents.put(me);
+		 // upload changed position to db
+         dpd.agents.put(this.me);
          this.uploadBlocked = true;
+         // query scene around the new location
+		 var location_deg = {
+			 longitude: Cesium.Math.toDegrees(location.longitude),
+			 latitude: Cesium.Math.toDegrees(location.latitude)
+		 }
+         objects = this.loadObjectsNear(location_deg, radius);
+         agents = this.loadAgentsNear(location_deg, radius);
       }
    }
 }
