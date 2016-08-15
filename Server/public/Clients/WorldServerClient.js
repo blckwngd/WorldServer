@@ -64,7 +64,6 @@ WorldServerClient.prototype.login = function(username, password) {
       } else {
          self.dpd.agents.me(function(user) {
            if (user) {
-             console.log("I AM ", user);
              self.me = user;
              self.loggedIn = true;
            }
@@ -97,8 +96,6 @@ WorldServerClient.prototype.enableGeoLocation = function(callback) {
    
    var self = this; // cheat on closure
    this.geoLocationWatchID = navigator.geolocation.watchPosition(function(location) {
-     
-      console.log(location.coords.longitude, location.coords.latitude);
       
       if (self.locationAuthority == WorldServerClient.prototype.LocationAuthority.Geo) {
          // update stored location
@@ -150,7 +147,6 @@ WorldServerClient.prototype.updateAgentLocationFromCamera = function(forceSync) 
    if (!this.viewer)
       return;
    var location = this.viewer.camera.positionCartographic;
-   console.log(location);
    if (this.me) {
       this.me.location.coordinates[0] = Cesium.Math.toDegrees(location.longitude); // TODO: toDegrees() necessary?
       this.me.location.coordinates[1] = Cesium.Math.toDegrees(location.latitude);
@@ -213,9 +209,7 @@ WorldServerClient.prototype.loadObjectsNear = function(coordinates, maxDistance)
          location : {"$near":{"$maxDistance":maxDistance,"$geometry":{type:"Point",coordinates:coords}}}
       },
       function(objects, error) { //Use dpd.js to access the API
-         console.log("Objects loaded.");
          for (var i in objects) {
-            console.log("Object[" + i + "]: ", objects[i]);
             var object = objects[i];
             self.updateObjectInfoOnMap(object);
          }
@@ -234,9 +228,7 @@ WorldServerClient.prototype.loadAgentsNear = function(coordinates, maxDistance) 
          location : {"$near":{"$maxDistance":maxDistance,"$geometry":{type:"Point",coordinates:coords}}}
       },
       function(agents, error) { //Use dpd.js to access the API
-         console.log("Agents loaded.");
          for (var i in agents) {
-            console.log("Agent[" + i + "]: ", agents[i]);
             var agent = agents[i];
             self.updateAgentInfoOnMap(agent);
          }
@@ -258,7 +250,6 @@ WorldServerClient.prototype.updateAgentInfoOnMap = function(agent) {
    // check if agent is already loaded
    var entity = viewer.entities.getById(agent.id);
    if (typeof entity == "undefined") {
-      console.log("setting agent position to ", agent.location.coordinates[0], agent.location.coordinates[1]);
       entity = {
          name : agent.username,
          id : agent.id,
@@ -300,7 +291,6 @@ WorldServerClient.prototype.updateObjectInfoOnMap = function(object) {
    // check if object is already loaded
    var entity = viewer.entities.getById(object.id);
    if (typeof entity == "undefined") {
-      console.log("setting object position to ", object.location.coordinates[0], object.location.coordinates[1]);
       entity = {
          name : object.id,
          id : object.id,
@@ -311,8 +301,8 @@ WorldServerClient.prototype.updateObjectInfoOnMap = function(object) {
              outlineColor : Cesium.Color.WHITE,
              outlineWidth : 1,
              style : Cesium.LabelStyle.FILL_AND_OUTLINE,
-             pixelOffset : new Cesium.Cartesian2(0.0, -20),
-             pixelOffsetScaleByDistance : new Cesium.NearFarScalar(1.5e2, 3.0, 1.5e7, 0.5),
+			 eyeOffset : new Cesium.Cartesian3(0.0, 11.0, 0.0),
+			 verticalOrigin : Cesium.VerticalOrigin.BOTTOM,
              translucencyByDistance : new Cesium.NearFarScalar(1.5, 1.0, 1.5e3, 0.0)
          },
          description : "<i>" + object.id + "</i><p>" + object.description + "</p>"
@@ -325,12 +315,14 @@ WorldServerClient.prototype.updateObjectInfoOnMap = function(object) {
             maximumScale : 20000
          };
       } else {
-         entity.box = {
-            dimensions : new Cesium.Cartesian3(1, 1, 1),
-            material : Cesium.Color.RED,
-            outline : true,
-            outlineColor : Cesium.Color.BLACK
-         };
+         entity.polyline = {
+			positions : [
+				Cesium.Cartesian3.fromDegrees(object.location.coordinates[0], object.location.coordinates[1], 0.0),
+				Cesium.Cartesian3.fromDegrees(object.location.coordinates[0], object.location.coordinates[1], 10.0),
+			],
+			width : 5,
+			material : new Cesium.PolylineGlowMaterialProperty({color: Cesium.Color.RED})
+		  }
       }
       if (typeof this.onObjectCreated != "undefined") this.onObjectCreated (entity);
       viewer.entities.add(entity);

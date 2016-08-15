@@ -66,9 +66,24 @@
    var radius = 1000;
    
    var viewer = new Cesium.Viewer('cesiumContainer', {
-       infoBox : true,
-       selectionIndicator : true
+		infoBox : true,
+		vrButton : true,
+		timeline : false,
+		navigationHelpButton : false,
+		navigationInstructionsInitiallyVisible : false,
+		homeButton : false,
+		geocoder : false,
+		animation : false,
+		scene3DOnly : true,
+		shadows : true,
+		terrainShadows : true,
+		fullscreenElement : true,
+        selectionIndicator : true,
+		imageryProvider : Cesium.createOpenStreetMapImageryProvider({
+			url : 'https://a.tile.openstreetmap.org/'
+		}),
    });
+   viewer.camera.flyTo({destination : Cesium.Cartesian3.fromDegrees(7.540838, 50.450140, 15000.0)});
    var pinBuilder = new Cesium.PinBuilder();
    
    function flyToEntity(targetId) {
