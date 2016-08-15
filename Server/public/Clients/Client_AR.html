@@ -131,10 +131,8 @@ html, body {
     shadows : true,
     terrainShadows : true,
     fullscreenElement : true,
-    imageryProvider : new Cesium.MapboxImageryProvider({
-       mapId: 'mapbox.streets',
-       accessToken: 'pk.eyJ1IjoiYW5hbHl0aWNhbGdyYXBoaWNzIiwiYSI6IjA2YzBjOTM3YzFlYzljYmQ5NDAxZWI1Y2ZjNzZlM2E1In0.vDZL2SPFEpi_f7ziAIP_yw'
-    }),
+	imageryProviderViewModels : imagerySources,
+	selectedImageryProviderViewModel : imagerySources[5],
     contextOptions : { webgl: { alpha: true } }
    });
    

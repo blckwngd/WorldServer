@@ -310,9 +310,9 @@ WorldServerClient.prototype.updateObjectInfoOnMap = function(object) {
       if (typeof object.url != "undefined") {
          // draw model
          entity.model = {
-            uri : object.url,
+            uri : object.url/*,
             minimumPixelSize : 128,
-            maximumScale : 20000
+            maximumScale : 20000*/
          };
       } else {
          entity.polyline = {
