@@ -1,0 +1,179 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="utf-8">
+<meta content="Pet Agent" name="title">
+<!-- Tell IE to use the latest, best version. -->
+<meta http-equiv="X-UA-Compatible" content="IE=edge">
+<!-- Make the application on mobile take up the full browser screen and disable user scaling. -->
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, minimum-scale=1, user-scalable=no">
+<title>Pet Agent</title>
+  
+<script src="../Cesium/Cesium.js"></script>
+  
+<style>
+
+@import url(../Cesium/Widgets/widgets.css);
+
+#container {
+   position:absolute;
+   width: 100%;
+   height: 100%;
+   margin: 0px;
+   padding: 0px;
+   overflow: hidden;
+}
+html, body {
+   width: 100%; height: 100%; margin: 0; padding: 0; overflow: hidden;
+}
+
+#cesiumContainer {
+   position: absolute; width: 100%; height: 100%; margin: 0; padding: 0; overflow: hidden;
+}
+</style>
+</head>
+  
+<body>
+
+<div id="container">
+
+   <div id="cesiumContainer"></div>
+
+</div>
+
+<script type="text/javascript" src="../ThirdParty/jquery-2.2.0.min.js"></script>
+<script src="/dpd.js"></script>
+<script type="text/javascript" src="WorldServerClient.js"></script>
+<script>
+
+
+   // WorldServer Client
+   var me = false;
+   var objects = [];
+   var agents = [];
+   // WorldServer login
+   var username = "agent_pet";
+   var password = "agent_pet_jo8V4lx";
+   var max_radius = 100; // in meters
+   var speed = 1.0; // in meters per second
+   var spawned = false;
+   var playerPosition = false;
+   var myPosition = false;
+   var myStart = false;
+   var myDestination = false;
+   var intervalDistance = 0;
+   var intervalDurationTotal = 0;
+   var intervalDurationCurrent = 0;
+   var currentTime = Date.now();
+
+   // CESIUM
+   var viewer = null;
+   
+   // WORLDSERVER ACCESS
+   var worldServerClient = new WorldServerClient(viewer, dpd);
+   
+   var onLocationUpdate = function (location) {
+		console.log("updated location: " + location.coords.longitude + ", " + location.coords.latitude);
+		playerPosition = new Cesium.Cartesian3.fromDegrees(location.coords.longitude, location.coords.latitude);
+		if (!spawned) {
+			// determine a starting point and the destination near the players geo location
+			myStart = getRandomPosition (location.coords.longitude, location.coords.latitude, max_radius);
+			myDestination = getRandomPosition (location.coords.longitude, location.coords.latitude, max_radius);
+			var dst = Cesium.Cartographic.fromCartesian(myDestination);
+			console.log("myStart=" + Cesium.Cartographic.fromCartesian(myStart));
+			
+			intervalDistance = Cesium.Cartesian3.distance(myStart, myDestination);// / 111300;
+			intervalDurationTotal = 1000 * intervalDistance / speed;
+			intervalDurationCurrent = 0;
+			myPosition = myStart.clone();
+			
+			var loc = Cesium.Cartographic.fromCartesian (myPosition);
+			worldServerClient.setOwnLocation (Cesium.Math.toDegrees(loc.longitude), Cesium.Math.toDegrees(loc.latitude), 0);
+			spawned = true;
+			window.setInterval(loop, 5000);
+		}
+   }
+
+   var onLogin = function(agent) {
+		// logged in. now look for gps coordinates
+		console.log("success. looking for coordinates...");
+		worldServerClient.enableGeoLocation(onLocationUpdate);
+   }
+   
+   console.log("trying to log you in");
+   worldServerClient.login(username, password, onLogin, false);
+   
+   worldServerClient.setLocationAuthority(worldServerClient.locationAuthority.Agent);
+   
+   worldServerClient.onObjectCreated = function(object) {
+      // change the object entity if desired
+   }
+   worldServerClient.onObjectCreated = function(agent) {
+      // change the agent entity  if desired
+   }
+   
+    // calculate a random position within a given radius around a given longitude and latitude
+    function getRandomPosition (longitude, latitude, max_radius) {
+		// random angle
+		var angle = Math.random() * 360;
+		// random radius from player
+		var radius = Math.random() * max_radius;
+		var rd = radius / 111300; //about 111300 meters in one degree
+		// calculate random position
+		var radians = Cesium.Math.toRadians(angle);
+		var new_lon = longitude + (rd * 1.5 * Math.cos(radians));
+		var new_lat = latitude + (rd * Math.sin(radians));
+		var position_c = Cesium.Cartographic.fromDegrees(new_lon, new_lat);
+		var position = Cesium.Ellipsoid.WGS84.cartographicToCartesian(position_c);
+		return position;
+    }
+	
+	
+   function loop() {
+	  console.log("++++++ NEXT LOOP +++++++")
+	  var now = Date.now();
+	  var delta = now - currentTime;
+	  currentTime = now;
+	  intervalDurationCurrent += delta;
+	  
+	  // calculate distance to target
+	  var distance = Cesium.Cartesian3.distance(myPosition, myDestination);
+	  var dist_m = distance;// / 111300;
+	  console.log("distance to target: " + dist_m);
+	  
+	  if (dist_m < 10) {
+		  // determine a new destination
+		  var loc = Cesium.Cartographic.fromCartesian (playerPosition);
+		  console.log("omg we are there. looking for a new target around ", loc);
+		  myDestination = getRandomPosition (Cesium.Math.toDegrees(loc.longitude), Cesium.Math.toDegrees(loc.latitude), max_radius);
+		  console.log("new target: ", Cesium.Cartographic.fromCartesian (myDestination));
+		  myStart = myPosition.clone();
+		  
+		  intervalDistance = Cesium.Cartesian3.distance(myStart, myDestination);// / 111300;
+		  console.log("new distance: " + intervalDistance);
+		  intervalDurationTotal = 1000 * intervalDistance / speed;
+		  intervalDurationCurrent = 0;
+		  
+		  dist_m = intervalDistance;
+	  }
+	  
+	  // interpolate 
+	  console.log(myStart);
+	  console.log(myDestination);
+	  console.log("durC=" + intervalDurationCurrent/1000);
+	  console.log("durT=" + intervalDurationTotal/1000);
+	  var perc = intervalDurationCurrent / intervalDurationTotal;
+	  console.log("percentage=" + perc);
+	  myPosition.x = Cesium.Math.lerp(myStart.x, myDestination.x, perc);
+	  myPosition.y = Cesium.Math.lerp(myStart.y, myDestination.y, perc);
+	  myPosition.z = Cesium.Math.lerp(myStart.z, myDestination.z, perc);
+	  
+	  var myLocation = Cesium.Cartographic.fromCartesian(myPosition);
+	  console.log("uploading new position: ", Cesium.Math.toDegrees(myLocation.longitude), Cesium.Math.toDegrees(myLocation.latitude));
+	  worldServerClient.setOwnLocation (Cesium.Math.toDegrees(myLocation.longitude), Cesium.Math.toDegrees(myLocation.latitude), 0);
+	  
+   }
+   
+</script>
+</body>
+</html>
