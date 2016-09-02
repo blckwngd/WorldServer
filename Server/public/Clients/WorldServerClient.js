@@ -5,14 +5,16 @@ function WorldServerClient(viewer, dpd) {
    this.viewer = viewer;
    this.dpd = dpd;
    this.loggedIn = false;
-   this.agents = [];
-   this.objects = [];
-   this.me = false;
+   this.agents = []; // { id : "", viewer_entity : {}, db_entity : {}, linked_objects : [] }
+   this.objects = []; // { id : "", viewer_entity : {}, db_entity : {} }
+   this.me = false; // index of users agent
    this.locationAuthority = WorldServerClient.prototype.LocationAuthority.Geo;
    this.geoLocationWatchID = false;
    this.currentLocation = false;
    this.isCameraMoving = false;
+   this.radius = 1000;
    this.minUploadInterval = 2000; // do not upload more often than each x millisecs
+   this.currentTime = new Date();
    
    // user callbacks
    this.onObjectCreaed = null;
@@ -39,6 +41,8 @@ function WorldServerClient(viewer, dpd) {
    window.setInterval(function() {
       self.uploadBlocked = false;
    }, this.minUploadInterval);
+   
+   this.init();
 };
 
 /**
@@ -46,31 +50,51 @@ function WorldServerClient(viewer, dpd) {
  * ENUM for valid locationAuthorities
  */
 WorldServerClient.prototype.LocationAuthority = {
-   Camera : 1,	// the users controls the camera, the agent moves accordingly
-   Geo: 2,		// camera and agent are adjusted to the users gps coordinates
-   Agent: 3		// the agent is controlled directly by the script. camera will be adjusted accordingly
+   Camera : 1,   // the users controls the camera, the agent moves accordingly
+   Geo: 2,      // camera and agent are adjusted to the users gps coordinates
+   Agent: 3      // the agent is controlled directly by the script. camera will be adjusted accordingly
 };
+
+
+WorldServerClient.prototype.init = function() {
+   var self = this;
+   this.dpd.agents.on('changed', function(db_entity) {
+      console.log("Agent " + db_entity.id + " changed");
+      self.updateAgentInfoFromDB(db_entity);
+   });
+   this.dpd.objects.on('changed', function(db_entity) {
+      console.log("Object " + db_entity.id + " changed");
+      self.updateObjectInfoFromDB(db_entity);
+   });
+}
+
 
 /** login
  *
  * performs the login procedure for the wurrent user on the WorldServer
  */
-WorldServerClient.prototype.login = function(username, password) {
+WorldServerClient.prototype.login = function(username, password, onLogin, onLoginFailed) {
    var self = this;
    this.dpd.agents.login({username: username, password: password}, function(result, error) {
       if (error) {
-        alert(error.message);
-        self.loggedIn = false;
+         alert(error.message);
+         self.loggedIn = false;
+         if (typeof onLoginFailed != "undefined" && onLoginFailed != false) {
+            onLoginFailed();
+         }
       } else {
          self.dpd.agents.me(function(user) {
-           if (user) {
-             self.me = user;
-             self.loggedIn = true;
-           }
+            if (user) {
+               self.me = self.agents.push({viewer_entity : false, db_entity : user, linked_objects : []}) - 1; // index, not length
+               self.loggedIn = true;
+               if ((typeof onLogin != "undefined") && (onLogin != false)) {
+                  onLogin(self.agents[self.me]);
+               }
+            }
          });
       }
    });
-}
+};
 
 /** setLocationAuthority
  *
@@ -83,7 +107,7 @@ WorldServerClient.prototype.setLocationAuthority = function(locationAuthority) {
    if (locationAuthority == WorldServerClient.prototype.LocationAuthority.Geo) {
       this.enableGeoLocation();
    }
-}
+};
 
 /** enableGeoLocation
  *
@@ -114,27 +138,29 @@ WorldServerClient.prototype.enableGeoLocation = function(callback) {
          }
          
          // update agent
-         if (self.me) {
-            if (!self.me.location) {
-               self.me.location = {
+         if (self.me !== false) {
+            var player = self.agents[self.me];
+            if (!player.db_entity.location) {
+               player.db_entity.location = {
                   coordinates: [],
                   height: 0
                }
             }
-            self.me.location.coordinates[0] = location.coords.longitude;
-            self.me.location.coordinates[1] = location.coords.latitude;
-            dpd.agents.put(me);
+         
+            player.db_entity.location.coordinates[0] = location.coords.longitude;
+            player.db_entity.location.coordinates[1] = location.coords.latitude;
+            dpd.agents.put(player.db_entity);
          }
          
          // query scene around the new location
-         objects = self.loadObjectsNear(location.coords, radius);
-         agents = self.loadAgentsNear(location.coords, radius);
+         objects = self.loadObjectsNear(location.coords, self.radius);
+         agents = self.loadAgentsNear(location.coords, self.radius);
       }
      
       if (typeof callback != "undefined")
          callback(location);
    });
-}
+};
 
 /**
  * updateAgentLocationFromCamera
@@ -146,26 +172,30 @@ WorldServerClient.prototype.enableGeoLocation = function(callback) {
 WorldServerClient.prototype.updateAgentLocationFromCamera = function(forceSync) {
    if (!this.viewer)
       return;
+   if (this.me === false)
+      return;
    var location = this.viewer.camera.positionCartographic;
-   if (this.me) {
-      this.me.location.coordinates[0] = Cesium.Math.toDegrees(location.longitude); // TODO: toDegrees() necessary?
-      this.me.location.coordinates[1] = Cesium.Math.toDegrees(location.latitude);
-      this.me.location.height = location.height;
-      
-      if (forceSync || !this.uploadBlocked ) {
-		 // upload changed position to db
-         dpd.agents.put(this.me);
-         this.uploadBlocked = true;
+   var player = this.agents[this.me];
+   // update info of database-object
+   player.db_entity.location.coordinates[0] = Cesium.Math.toDegrees(location.longitude); // TODO: toDegrees() necessary?
+   player.db_entity.location.coordinates[1] = Cesium.Math.toDegrees(location.latitude);
+   player.db_entity.location.height = location.height;
+   // update info of viewer object
+   player.viewer_entity.location = player.db_entity.location;
+
+   if (forceSync || !this.uploadBlocked ) {
+      // upload changed position to db
+      dpd.agents.put(player.db_entity);
+      this.uploadBlocked = true;
          // query scene around the new location
-		 var location_deg = {
-			 longitude: Cesium.Math.toDegrees(location.longitude),
-			 latitude: Cesium.Math.toDegrees(location.latitude)
-		 }
-         objects = this.loadObjectsNear(location_deg, radius);
-         agents = this.loadAgentsNear(location_deg, radius);
+      var location_deg = {
+         longitude: Cesium.Math.toDegrees(location.longitude),
+         latitude: Cesium.Math.toDegrees(location.latitude)
       }
+      objects = this.loadObjectsNear(location_deg, radius);
+      agents = this.loadAgentsNear(location_deg, radius);
    }
-}
+};
 
 /** onCameraMoveStart
  *
@@ -173,18 +203,18 @@ WorldServerClient.prototype.updateAgentLocationFromCamera = function(forceSync) 
  */
 WorldServerClient.prototype.onCameraMoveStart = function() {
    // callback code
-}
+};
 
 
 /** onCameraMove
  *
  * this callback is executed on each tick while the viewers camera is moving
  */
-WorldServerClient.prototype.onCameraMove= function() {
+WorldServerClient.prototype.onCameraMove = function() {
    if (this.locationAuthority == WorldServerClient.prototype.LocationAuthority.Camera) {
       this.updateAgentLocationFromCamera(false);
    }
-}
+};
 
 /** onCameraMoveEnd
  *
@@ -195,8 +225,22 @@ WorldServerClient.prototype.onCameraMoveEnd = function() {
       // force sync of the new position to the backend, since this is the final position
       this.updateAgentLocationFromCamera(true);
    }
-}
+};
 
+/** setLocation
+ *
+ * helper function to easily adjust the players position
+ */
+WorldServerClient.prototype.setOwnLocation = function(longitude, latitude, height) {
+   if (this.me === false)
+      return;
+   this.agents[this.me].db_entity.location = {
+      type: "Point",
+      coordinates: [Cesium.Math.toDegrees(longitude), Cesium.Math.toDegrees(latitude)],
+      height: height
+   };
+   this.updateAgentInfoFromDB(this.agents[this.me]); // TODO: ugly: this will repeat many steps
+};
 
 /*
  * queries for game objects near a specific position
@@ -206,15 +250,15 @@ WorldServerClient.prototype.loadObjectsNear = function(coordinates, maxDistance)
    var self = this;
    this.dpd.objects.get(
       {
-         location : {"$near":{"$maxDistance":maxDistance,"$geometry":{type:"Point",coordinates:coords}}}
+         location : {"$near":{"$maxDistance":maxDistance,"$geometry":{type:"Point",coordinates:coords}}}, 
+         isrelative:false
       },
       function(objects, error) { //Use dpd.js to access the API
          for (var i in objects) {
-            var object = objects[i];
-            self.updateObjectInfoOnMap(object);
+            self.updateObjectInfoFromDB(objects[i]);
          }
       });
-}
+};
 
 
 /*
@@ -229,8 +273,7 @@ WorldServerClient.prototype.loadAgentsNear = function(coordinates, maxDistance) 
       },
       function(agents, error) { //Use dpd.js to access the API
          for (var i in agents) {
-            var agent = agents[i];
-            self.updateAgentInfoOnMap(agent);
+            self.updateAgentInfoFromDB(agents[i]);
          }
       });
 }
@@ -240,44 +283,58 @@ WorldServerClient.prototype.loadAgentsNear = function(coordinates, maxDistance) 
 /*
  * adjusts the visual representation of a game agent (player) on the 3d map, i.e. its position
  */
-WorldServerClient.prototype.updateAgentInfoOnMap = function(agent) {
+WorldServerClient.prototype.updateAgentInfoFromDB = function(db_agent) {
    if (!this.viewer) // no graphical representation => nothing to do
       return;
-   if (typeof agent == "undefined") {
+   if (typeof db_agent == "undefined") {
       console.log("ERR: AGENT IS UNDEFINED");
       return;
    }
+   
    // check if agent is already loaded
-   var entity = viewer.entities.getById(agent.id);
-   if (typeof entity == "undefined") {
-      entity = {
-         name : agent.username,
-         id : agent.id,
-         position : Cesium.Cartesian3.fromDegrees(agent.location.coordinates[0], agent.location.coordinates[1], agent.location.height),
-         point : {
-            color : Cesium.Color.BLUE, // default: WHITE
-            pixelSize : 25, // default: 1
-            outlineColor : Cesium.Color.YELLOW, // default: BLACK
-            outlineWidth : 1 // default: 0
-         },
-         label : {
-             text : "AGENT: " + agent.username,
-             description : "<i>" + agent.username + "</i>",
-             fillColor : Cesium.Color.RED,
-             outlineColor : Cesium.Color.WHITE,
-             outlineWidth : 1,
-             style : Cesium.LabelStyle.FILL_AND_OUTLINE,
-             pixelOffset : new Cesium.Cartesian2(0.0, -20),
-             pixelOffsetScaleByDistance : new Cesium.NearFarScalar(1.5e2, 3.0, 1.5e7, 0.5),
-             translucencyByDistance : new Cesium.NearFarScalar(1.5, 1.0, 1.5e3, 0.0)
-         }
+   var agent = false;
+   for (var i in this.agents) {
+      if (this.agents[i].id == db_agent.id) {
+         agent = this.agents[i];
+      }
+   }
+   if (agent == false) {
+      // create a new agent
+      agent = {
+         id : db_agent.id,
+         db_entity : db_agent,
+         viewer_entity : viewer.entities.add({
+            name : db_agent.username,
+            id : db_agent.id,
+            position : Cesium.Cartesian3.fromDegrees(db_agent.location.coordinates[0], db_agent.location.coordinates[1], db_agent.location.height),
+            point : {
+               color : Cesium.Color.BLUE, // default: WHITE
+               pixelSize : 25, // default: 1
+               outlineColor : Cesium.Color.YELLOW, // default: BLACK
+               outlineWidth : 1 // default: 0
+            },
+            label : {
+                text : "AGENT: " + db_agent.username,
+                description : "<i>" + db_agent.username + "</i>",
+                fillColor : Cesium.Color.RED,
+                outlineColor : Cesium.Color.WHITE,
+                outlineWidth : 1,
+                style : Cesium.LabelStyle.FILL_AND_OUTLINE,
+                pixelOffset : new Cesium.Cartesian2(0.0, -20),
+                pixelOffsetScaleByDistance : new Cesium.NearFarScalar(1.5e2, 3.0, 1.5e7, 0.5),
+                translucencyByDistance : new Cesium.NearFarScalar(1.5, 1.0, 1.5e3, 0.0)
+            }
+         })
       };
-      if (typeof this.onAgentUpdated != "undefined") this.onAgentCreated (entity);
-      viewer.entities.add(entity);
+      this.agents.push(agent);
+      if (typeof this.onAgentCreated != "undefined") this.onAgentCreated (agent);
+      
    } else {
       // already loaded. adjustment of position & co
-      entity.position = Cesium.Cartesian3.fromDegrees(agent.location.coordinates[0], agent.location.coordinates[1], agent.location.height);
-      if (typeof this.onAgentUpdated != "undefined") this.onAgentUpdated (entity);
+      agent.viewer_entity.position = Cesium.Cartesian3.fromDegrees(db_agent.location.coordinates[0], db_agent.location.coordinates[1], db_agent.location.height);
+      agent.db_entity.location = db_agent.location;
+      agent.db_entity.orientation = db_agent.orientation;
+      if (typeof this.onAgentUpdated != "undefined") this.onAgentUpdated (agent);
    }
    
 }
@@ -285,51 +342,69 @@ WorldServerClient.prototype.updateAgentInfoOnMap = function(agent) {
 /*
  * adjusts the visual representation of a game object on the 3d map, i.e. its position
  */
-WorldServerClient.prototype.updateObjectInfoOnMap = function(object) {
+WorldServerClient.prototype.updateObjectInfoFromDB = function(db_object) {
    if (!this.viewer) // no graphical representation => nothing to do
       return;
+      
    // check if object is already loaded
-   var entity = viewer.entities.getById(object.id);
-   if (typeof entity == "undefined") {
-      entity = {
-         name : object.id,
-         id : object.id,
-         position : Cesium.Cartesian3.fromDegrees(object.location.coordinates[0], object.location.coordinates[1], object.location.height),
-         label : {
-             text : (object.name ? object.name : ("OBJECT: " + object.id)),
-             fillColor : Cesium.Color.BLACK,
-             outlineColor : Cesium.Color.WHITE,
-             outlineWidth : 1,
-             style : Cesium.LabelStyle.FILL_AND_OUTLINE,
-			 eyeOffset : new Cesium.Cartesian3(0.0, 11.0, 0.0),
-			 verticalOrigin : Cesium.VerticalOrigin.BOTTOM,
-             translucencyByDistance : new Cesium.NearFarScalar(1.5, 1.0, 1.5e3, 0.0)
-         },
-         description : "<i>" + object.id + "</i><p>" + object.description + "</p>"
+   var object = false;
+   for (var i in this.objects) {
+      if (this.objects[i].id == db_agent.id) {
+         object = this.objects[i];
+      }
+   }
+   if (object == false) {
+      // create a new object
+      
+      object = {
+         id : db_object.id,
+         db_entity : db_object,
+         viewer_entity : viewer.entities.add({
+            name : db_object.id,
+            id : db_object.id,
+            position : Cesium.Cartesian3.fromDegrees(db_object.location.coordinates[0], db_object.location.coordinates[1], db_object.location.height),
+            label : {
+               text : (db_object.name ? db_object.name : ("OBJECT: " + db_object.id)),
+               fillColor : Cesium.Color.BLACK,
+               outlineColor : Cesium.Color.WHITE,
+               outlineWidth : 1,
+               style : Cesium.LabelStyle.FILL_AND_OUTLINE,
+               eyeOffset : new Cesium.Cartesian3(0.0, 11.0, 0.0),
+               verticalOrigin : Cesium.VerticalOrigin.BOTTOM,
+               translucencyByDistance : new Cesium.NearFarScalar(1.5, 1.0, 1.5e3, 0.0)
+            },
+            description : "<i>" + db_object.id + "</i><p>" + db_object.description + "</p>"
+         })
       };
-      if (typeof object.url != "undefined") {
+      
+      if (typeof db_object.url != "undefined") {
          // draw model
-         entity.model = {
-            uri : object.url/*,
-            minimumPixelSize : 128,
-            maximumScale : 20000*/
+         object.viewer_entity.model = {
+            uri : db_object.url
          };
       } else {
-         entity.polyline = {
-			positions : [
-				Cesium.Cartesian3.fromDegrees(object.location.coordinates[0], object.location.coordinates[1], 0.0),
-				Cesium.Cartesian3.fromDegrees(object.location.coordinates[0], object.location.coordinates[1], 10.0),
-			],
-			width : 5,
-			material : new Cesium.PolylineGlowMaterialProperty({color: Cesium.Color.RED})
-		  }
+         object.viewer_entity.polyline = {
+         positions : [
+            Cesium.Cartesian3.fromDegrees(db_object.location.coordinates[0], db_object.location.coordinates[1], 0.0),
+            Cesium.Cartesian3.fromDegrees(db_object.location.coordinates[0], db_object.location.coordinates[1], 10.0),
+         ],
+         width : 5,
+         material : new Cesium.PolylineGlowMaterialProperty({color: Cesium.Color.RED})
+        }
       }
-      if (typeof this.onObjectCreated != "undefined") this.onObjectCreated (entity);
-      viewer.entities.add(entity);
+      if (typeof this.onObjectCreated != "undefined") this.onObjectCreated (object);
    } else {
       // already loaded. adjustment of position & co
-      entity.position = Cesium.Cartesian3.fromDegrees(object.location.coordinates[0], object.location.coordinates[1], object.location.height);
-      if (typeof this.ObjectUpdated != "undefined") this.onObjectUpdated (entity);
+      object.viewer_entity.position = Cesium.Cartesian3.fromDegrees(db_object.location.coordinates[0], db_object.location.coordinates[1], db_object.location.height);
+      // TODO: update size and orientation in viewer
+      object.db_entity.location = db_object.location;
+      object.db_entity.orientation = db_object.orientation;
+      object.db_entity.scale = db_object.scale;
+      object.db_entity.name = db_object.name;
+      object.db_entity.description = db_object.description;
+      object.viewer_entity.name = db_object.name;
+      object.viewer_entity.description = db_object.description;
+      if (typeof this.onObjectUpdated != "undefined") this.onObjectUpdated (object);
    }
 }
 
@@ -348,12 +423,13 @@ WorldServerClient.prototype.setShadows = function(castShadows, receiveShadows) {
  * a unique id must be provided to prevent duplicates from multiple uploads from one agent/user
  */
 WorldServerClient.prototype.pushObject = function(uid, longitude, latitude, height, name, description) {
-   if (!this.me) {
+   if (this.me === false) {
       console.log("WorldServerClient.pushObject: you must be logged in to do this");
       return;
    }
-   var uuid = this.me.id + uid; // each unique object can only be created once by one agent
-   var object = {
+   var uuid = this.agents[this.me].id + uid; // each unique object can only be created once by one agent
+   // we don´t care about adding the new object to the scene here. this will be done as soon as it is pushed back to us from the server
+   var db_entity = {
       name : name,
       location : {
          type : "Point",
@@ -365,7 +441,7 @@ WorldServerClient.prototype.pushObject = function(uid, longitude, latitude, heig
    };
    var result = null;
    // TODO: Post Handler - uid prüfen, owner eintragen, description/title escapen
-   dpd.objects.post (object, function(res, error) {
+   dpd.objects.post (db_entity, function(res, error) {
       if (typeof error != "undefined")
          console.log("WorldServerClient.pushObject: ERROR in post: ", error);
       result = res;
