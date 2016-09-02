@@ -1,0 +1,1 @@
+emit('agents:changed', this);

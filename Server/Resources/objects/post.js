@@ -1,0 +1,1 @@
+emit('objects:changed', this);
