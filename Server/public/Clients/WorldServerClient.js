@@ -59,11 +59,9 @@ WorldServerClient.prototype.LocationAuthority = {
 WorldServerClient.prototype.init = function() {
    var self = this;
    this.dpd.agents.on('changed', function(db_entity) {
-      console.log("Agent " + db_entity.id + " changed");
       self.updateAgentInfoFromDB(db_entity);
    });
    this.dpd.objects.on('changed', function(db_entity) {
-      console.log("Object " + db_entity.id + " changed");
       self.updateObjectInfoFromDB(db_entity);
    });
 }
@@ -230,15 +228,18 @@ WorldServerClient.prototype.onCameraMoveEnd = function() {
 /** setLocation
  *
  * helper function to easily adjust the players position
+ * pass location in degrees
  */
 WorldServerClient.prototype.setOwnLocation = function(longitude, latitude, height) {
-   if (this.me === false)
+   if (this.me === false) {
       return;
+   }
    this.agents[this.me].db_entity.location = {
       type: "Point",
-      coordinates: [Cesium.Math.toDegrees(longitude), Cesium.Math.toDegrees(latitude)],
+      coordinates: [longitude, latitude],
       height: height
    };
+   dpd.agents.put(this.agents[this.me].db_entity);
    this.updateAgentInfoFromDB(this.agents[this.me]); // TODO: ugly: this will repeat many steps
 };
 
