@@ -85,7 +85,7 @@ html, body {
    // rear cam: http://stackoverflow.com/questions/18483160/which-camera-will-open-getusermedia-api-in-mobile-device-front-or-rear
    function gotSources(sourceInfos) {
      var camIndex = 0;
-     var chosenIndex = 0;
+     var chosenIndex = 1;
      for (var i = 0; i !== sourceInfos.length; ++i) {
        var sourceInfo = sourceInfos[i];
        var option = document.createElement('option');
@@ -119,6 +119,7 @@ html, body {
    }
 
    // CESIUM
+   var imagerySources = Cesium.createDefaultImageryProviderViewModels();
    var viewer = new Cesium.Viewer('cesiumContainer', {
     vrButton : true,
     timeline : false,
