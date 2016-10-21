@@ -73,7 +73,7 @@ html, body {
    var worldServerClient = new WorldServerClient(viewer, dpd);
    
    var onLocationUpdate = function (location) {
-		console.log("updated location: " + location.coords.longitude + ", " + location.coords.latitude);
+		console.log("updated GPS location: " + location.coords.longitude + ", " + location.coords.latitude);
 		playerPosition = new Cesium.Cartesian3.fromDegrees(location.coords.longitude, location.coords.latitude);
 		if (!spawned) {
 			// determine a starting point and the destination near the players geo location

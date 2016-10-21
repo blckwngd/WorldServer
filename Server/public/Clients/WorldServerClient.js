@@ -349,14 +349,14 @@ WorldServerClient.prototype.updateObjectInfoFromDB = function(db_object) {
       
    // check if object is already loaded
    var object = false;
-   for (var i in this.objects) {
-      if (this.objects[i].id == db_agent.id) {
+   for (var i=0; i<this.objects.length; i++) {
+      if (this.objects[i].id == db_object.id) {
          object = this.objects[i];
       }
    }
    if (object == false) {
       // create a new object
-      
+      console.log("creating new object: " + db_object.id);
       object = {
          id : db_object.id,
          db_entity : db_object,
@@ -394,8 +394,10 @@ WorldServerClient.prototype.updateObjectInfoFromDB = function(db_object) {
         }
       }
       if (typeof this.onObjectCreated != "undefined") this.onObjectCreated (object);
+      this.objects.push(object);
    } else {
       // already loaded. adjustment of position & co
+      console.log("updating existing object: " + object.db_entity.name);
       object.viewer_entity.position = Cesium.Cartesian3.fromDegrees(db_object.location.coordinates[0], db_object.location.coordinates[1], db_object.location.height);
       // TODO: update size and orientation in viewer
       object.db_entity.location = db_object.location;
@@ -404,7 +406,7 @@ WorldServerClient.prototype.updateObjectInfoFromDB = function(db_object) {
       object.db_entity.name = db_object.name;
       object.db_entity.description = db_object.description;
       object.viewer_entity.name = db_object.name;
-      object.viewer_entity.description = db_object.description;
+      object.viewer_entity.description = db_object.description; 
       if (typeof this.onObjectUpdated != "undefined") this.onObjectUpdated (object);
    }
 }
