@@ -126,7 +126,7 @@ WorldServerClient.prototype.enableGeoLocation = function(callback) {
          if (self.viewer) {
             // update camera
             self.viewer.camera.setView({
-                destination : Cesium.Cartesian3.fromDegrees(location.coords.longitude, location.coords.latitude, 1.5),
+                destination : Cesium.Cartesian3.fromDegrees(location.coords.longitude, location.coords.latitude, 1.5, viewer.scene.globe.ellipsoid),
                 orientation: {
                     heading : Cesium.Math.toRadians(0.0), // north, default value is 0.0 (north)
                     pitch : Cesium.Math.toRadians(0),    // straight
@@ -307,13 +307,14 @@ WorldServerClient.prototype.updateAgentInfoFromDB = function(db_agent) {
          viewer_entity : viewer.entities.add({
             name : db_agent.username,
             id : db_agent.id,
+            heightReference  : Cesium.HeightReference.RELATIVE_TO_GROUND,
             position : Cesium.Cartesian3.fromDegrees(db_agent.location.coordinates[0], db_agent.location.coordinates[1], db_agent.location.height),
-            point : {
+            /*point : {
                color : Cesium.Color.BLUE, // default: WHITE
                pixelSize : 25, // default: 1
                outlineColor : Cesium.Color.YELLOW, // default: BLACK
                outlineWidth : 1 // default: 0
-            },
+            },*/
             label : {
                 text : "AGENT: " + db_agent.username,
                 description : "<i>" + db_agent.username + "</i>",
@@ -363,7 +364,6 @@ WorldServerClient.prototype.updateObjectInfoFromDB = function(db_object) {
          viewer_entity : viewer.entities.add({
             name : db_object.id,
             id : db_object.id,
-            position : Cesium.Cartesian3.fromDegrees(db_object.location.coordinates[0], db_object.location.coordinates[1], db_object.location.height),
             label : {
                text : (db_object.name ? db_object.name : ("OBJECT: " + db_object.id)),
                fillColor : Cesium.Color.BLACK,
@@ -381,9 +381,16 @@ WorldServerClient.prototype.updateObjectInfoFromDB = function(db_object) {
       if (typeof db_object.url != "undefined") {
          // draw model
          object.viewer_entity.model = {
-            uri : db_object.url
+            uri : db_object.url,
+            heightReference  : Cesium.HeightReference.RELATIVE_TO_GROUND
          };
+         // apply the scaling (if defined)
+         if (typeof db_object.scale === "number") {
+            object.viewer_entity.model.scale = db_object.scale;
+         }
+         object.viewer_entity.position = Cesium.Cartesian3.fromDegrees(db_object.location.coordinates[0], db_object.location.coordinates[1], db_object.location.height);
       } else {
+         position : Cesium.Cartesian3.fromDegrees(db_object.location.coordinates[0], db_object.location.coordinates[1], db_object.location.height, viewer.scene.globe.ellipsoid),
          object.viewer_entity.polyline = {
          positions : [
             Cesium.Cartesian3.fromDegrees(db_object.location.coordinates[0], db_object.location.coordinates[1], 0.0),
@@ -398,7 +405,7 @@ WorldServerClient.prototype.updateObjectInfoFromDB = function(db_object) {
    } else {
       // already loaded. adjustment of position & co
       console.log("updating existing object: " + object.db_entity.name);
-      object.viewer_entity.position = Cesium.Cartesian3.fromDegrees(db_object.location.coordinates[0], db_object.location.coordinates[1], db_object.location.height);
+      object.viewer_entity.position = Cesium.Cartesian3.fromDegrees(db_object.location.coordinates[0], db_object.location.coordinates[1], db_object.location.height, viewer.scene.globe.ellipsoid);
       // TODO: update size and orientation in viewer
       object.db_entity.location = db_object.location;
       object.db_entity.orientation = db_object.orientation;
@@ -406,7 +413,7 @@ WorldServerClient.prototype.updateObjectInfoFromDB = function(db_object) {
       object.db_entity.name = db_object.name;
       object.db_entity.description = db_object.description;
       object.viewer_entity.name = db_object.name;
-      object.viewer_entity.description = db_object.description; 
+      object.viewer_entity.description = db_object.description;
       if (typeof this.onObjectUpdated != "undefined") this.onObjectUpdated (object);
    }
 }

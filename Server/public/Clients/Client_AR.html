@@ -57,6 +57,11 @@ html, body {
    </div>
 
    <div id="cesiumContainer"></div>
+   
+   <div id="testdiv" style="position:absolute;left:100px;right:100px;top:5px;height:50px;background-color:#ffffff;">
+   DEMO VIEWER
+   <input type="checkbox"> show agents &nbsp;&nbsp; <input type="checkbox"> show objects &nbsp;&nbsp; <input type="checkbox"> LAYER: Wikipedia &nbsp;&nbsp; 
+   </div>
 
 </div>
 
@@ -128,20 +133,22 @@ html, body {
     homeButton : false,
     geocoder : false,
     animation : false,
-    scene3DOnly : true,
-    shadows : true,
-    terrainShadows : true,
+    scene3DOnly : false,
+    shadows : false,
+    terrainShadows : false,
     fullscreenElement : true,
 	imageryProviderViewModels : imagerySources,
 	selectedImageryProviderViewModel : imagerySources[5],
     contextOptions : { webgl: { alpha: true } }
    });
    
+   /*
    viewer.terrainProvider = new Cesium.CesiumTerrainProvider({
        url : '//assets.agi.com/stk-terrain/world',
        requestWaterMask : true,
        requestVertexNormals : true
-   });
+   });*/
+   
    var shadowMap = viewer.shadowMap;
    //shadowMap.maxmimumDistance = 10000.0;
    // BACKGROUND TRANSPARENCY
@@ -162,13 +169,15 @@ html, body {
    // WORLDSERVER ACCESS
    var worldServerClient = new WorldServerClient(viewer, dpd);
    worldServerClient.login(username, password);
+
    worldServerClient.enableGeoLocation(function(location) {
      
      // create a demo AR object on first localisation
+     
      if (redBox === false) {
          redBox = viewer.entities.add({
            name : 'Demo AR object',
-           position: Cesium.Cartesian3.fromDegrees(location.coords.longitude, location.coords.latitude + 0.001),
+           position: Cesium.Cartesian3.fromDegrees(location.coords.longitude, location.coords.latitude + 0.001, 0.5, viewer.scene.globe.ellipsoid),
            box : {
                dimensions : new Cesium.Cartesian3(2.0, 2.0, 2.0),
                material : Cesium.Color.RED,
@@ -190,7 +199,7 @@ html, body {
       
    });
    
-   worldServerClient.setShadows(true, true);
+   //worldServerClient.setShadows(true, true);
    
    worldServerClient.onObjectCreated = function(object) {
       // change the object entity if desired
