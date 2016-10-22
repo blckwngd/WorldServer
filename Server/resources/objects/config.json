@@ -27,8 +27,8 @@
 		},
 		"scale": {
 			"name": "scale",
-			"type": "array",
-			"typeLabel": "array",
+			"type": "number",
+			"typeLabel": "number",
 			"required": false,
 			"id": "scale",
 			"order": 3
