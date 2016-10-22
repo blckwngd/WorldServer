@@ -9,40 +9,15 @@
 <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, minimum-scale=1, user-scalable=no">
 <title>Pet Agent</title>
   
-<script src="../Cesium/Cesium.js"></script>
   
 <style>
 
-@import url(../Cesium/Widgets/widgets.css);
-
-#container {
-   position:absolute;
-   width: 100%;
-   height: 100%;
-   margin: 0px;
-   padding: 0px;
-   overflow: hidden;
-}
-html, body {
-   width: 100%; height: 100%; margin: 0; padding: 0; overflow: hidden;
-}
-
-#cesiumContainer {
-   position: absolute; width: 100%; height: 100%; margin: 0; padding: 0; overflow: hidden;
-}
 </style>
-</head>
-  
-<body>
 
-<div id="container">
 
-   <div id="cesiumContainer"></div>
-
-</div>
-
+<script type="text/javascript" src="../Cesium/Cesium.js"></script>
 <script type="text/javascript" src="../ThirdParty/jquery-2.2.0.min.js"></script>
-<script src="/dpd.js"></script>
+<script type="text/javascript" src="/dpd.js"></script>
 <script type="text/javascript" src="WorldServerClient.js"></script>
 <script>
 
@@ -65,6 +40,7 @@ html, body {
    var intervalDurationTotal = 0;
    var intervalDurationCurrent = 0;
    var currentTime = Date.now();
+   var loopInterval = false;
 
    // CESIUM
    var viewer = null;
@@ -90,7 +66,11 @@ html, body {
 			var loc = Cesium.Cartographic.fromCartesian (myPosition);
 			worldServerClient.setOwnLocation (Cesium.Math.toDegrees(loc.longitude), Cesium.Math.toDegrees(loc.latitude), 0);
 			spawned = true;
-			window.setInterval(loop, 1000);
+         
+         // enable the button
+         loopInterval = true; // dirty hack to toggle the state to STOPPED
+         document.getElementById("btn_startstop").disabled = false;
+         startstop();
 		}
    }
 
@@ -163,6 +143,27 @@ html, body {
 	  
    }
    
+   function startstop() {
+      if (loopInterval === false) {
+         console.log("STARTING AGENT");
+         document.getElementById("txt_running").innerHTML = "[RUNNING]";
+         document.getElementById("btn_startstop").innerHTML = "STOP";
+         loopInterval = window.setInterval(loop, 1000);
+      } else {
+         console.log("STOPPING AGENT");
+         document.getElementById("txt_running").innerHTML = "[NOT RUNNING]";
+         document.getElementById("btn_startstop").innerHTML = "START";
+         window.clearInterval(loopInterval);
+         loopInterval = false;
+      }
+   }
 </script>
+</head>
+  
+<body>
+
+<span id="txt_running">[LOCATING USER]</span><br/>
+<button id="btn_startstop" onclick="startstop();" disabled>START</button>
+
 </body>
 </html>
