@@ -107,6 +107,18 @@
     }
 	
 	
+   function findNewDestination() {
+      // determine a new destination
+		var loc = Cesium.Cartographic.fromCartesian (playerPosition);
+		myDestination = getRandomPosition (Cesium.Math.toDegrees(loc.longitude), Cesium.Math.toDegrees(loc.latitude), max_radius);
+		console.log("new target: ", Cesium.Cartographic.fromCartesian (myDestination));
+		myStart = myPosition.clone();
+		  
+		intervalDistance = Cesium.Cartesian3.distance(myStart, myDestination);// / 111300;
+		intervalDurationTotal = 1000 * intervalDistance / speed;
+		intervalDurationCurrent = 0;
+   }
+   
    function loop() {
 	  var now = Date.now();
 	  var delta = now - currentTime;
@@ -119,17 +131,8 @@
 	  console.log("distance to target: " + dist_m);
 	  
 	  if (dist_m < 10) {
-		  // determine a new destination
-		  var loc = Cesium.Cartographic.fromCartesian (playerPosition);
-		  myDestination = getRandomPosition (Cesium.Math.toDegrees(loc.longitude), Cesium.Math.toDegrees(loc.latitude), max_radius);
-		  console.log("new target: ", Cesium.Cartographic.fromCartesian (myDestination));
-		  myStart = myPosition.clone();
-		  
-		  intervalDistance = Cesium.Cartesian3.distance(myStart, myDestination);// / 111300;
-		  intervalDurationTotal = 1000 * intervalDistance / speed;
-		  intervalDurationCurrent = 0;
-		  
-		  dist_m = intervalDistance;
+		  findNewDestination();
+        return;
 	  }
 	  
 	  // interpolate
@@ -148,6 +151,7 @@
          console.log("STARTING AGENT");
          document.getElementById("txt_running").innerHTML = "[RUNNING]";
          document.getElementById("btn_startstop").innerHTML = "STOP";
+         findNewDestination();
          loopInterval = window.setInterval(loop, 1000);
       } else {
          console.log("STOPPING AGENT");
